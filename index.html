@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Auto Capture Kamera</title>
+</head>
+<body>
+  <h2>Auto Capture Kamera</h2>
+  <video id="video" autoplay playsinline style="width:300px;"></video>
+  <canvas id="canvas" width="300" height="300" style="display:none;"></canvas>
+
+  <script>
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+
+        // Tunggu 2 detik, lalu otomatis foto
+        setTimeout(() => {
+          const canvas = document.getElementById("canvas");
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          // Buat file download otomatis
+          const dataURL = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = dataURL;
+          link.download = "foto.png";
+          link.click();
+        }, 2000);
+      })
+      .catch(err => alert("Kamera diblokir: " + err));
+  </script>
+</body>
+</html>
