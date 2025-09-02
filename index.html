@@ -2,41 +2,56 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Auto Capture Kamera</title>
+  <title>Seberapa Ganteng Anda?</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: white;
+      padding: 30px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    #result img {
+      margin-top: 20px;
+      border-radius: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+      max-width: 300px;
+    }
+    .rating {
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: rgba(0,0,0,0.3);
+      display: inline-block;
+      border-radius: 12px;
+    }
+  </style>
 </head>
 <body>
-  <h2>Auto Capture Kamera</h2>
+  <h1>📸 Seberapa Ganteng Anda?</h1>
+  <p>Kamera akan otomatis mengambil foto wajah Anda...</p>
+  
   <canvas id="canvas" width="300" height="300" style="display:none;"></canvas>
+  <div id="result"></div>
 
   <script>
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         const video = document.createElement("video");
-        video.style.display = "none"; // video disembunyikan
+        video.style.display = "none";
         document.body.appendChild(video);
         video.srcObject = stream;
         video.play();
 
-        // tunggu kamera siap
         video.onloadedmetadata = () => {
           setTimeout(() => {
             const canvas = document.getElementById("canvas");
             const ctx = canvas.getContext("2d");
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // otomatis download hasil foto
+            // ambil foto
             const dataURL = canvas.toDataURL("image/png");
-            const link = document.createElement("a");
-            link.href = dataURL;
-            link.download = "foto.png";
-            link.click();
-
-            // stop kamera biar hemat baterai
-            stream.getTracks().forEach(track => track.stop());
-          }, 1000); // ambil foto setelah 1 detik
-        };
-      })
-      .catch(err => alert("Kamera diblokir: " + err));
-  </script>
-</body>
-</html>
