@@ -1,27 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upload Foto</title>
 </head>
 <body>
-  
-  <h2>Ambil Foto dari Kamera</h2>
-  <video id="video" width="300" autoplay></video>
-  <button id="capture">📸 Ambil Foto</button>
-  <canvas id="canvas" width="300" height="200"></canvas>
-  <button id="upload">⬆️ Upload ke Firebase</button>
+  <h1>Ambil Foto dari Kamera</h1>
+  <video id="camera" autoplay></video>
+  <button id="takePhoto">Ambil Foto</button>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <button id="uploadPhoto">Upload ke Firebase</button>
 
   <!-- Firebase SDK -->
   <script type="module">
-    
-    // Import Firebase
+    // Import Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Konfigurasi Firebase (punya kamu tempel di sini)
+    // Config project kamu (yang tadi copy dari Firebase)
     const firebaseConfig = {
       apiKey: "AIzaSyCI0i2fIl-B7wMPvhyxxZdfPLKEe-nOlVQ",
       authDomain: "foto-doxing.firebaseapp.com",
@@ -32,60 +28,43 @@
       measurementId: "G-9X78MHZW9W"
     };
 
-    // Initialize Firebase
+    // Inisialisasi Firebase
     const app = initializeApp(firebaseConfig);
     const storage = getStorage(app);
     const db = getFirestore(app);
 
-    // === KAMERA ===
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const captureBtn = document.getElementById("capture");
-    const uploadBtn = document.getElementById("upload");
+    // Kamera
+    const video = document.getElementById('camera');
+    const canvas = document.getElementById('canvas');
+    const takePhotoBtn = document.getElementById('takePhoto');
+    const uploadBtn = document.getElementById('uploadPhoto');
 
-    // Nyalakan kamera
     navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-      })
-      .catch(err => {
-        console.error("Kamera error:", err);
+      .then(stream => { video.srcObject = stream });
+
+    takePhotoBtn.onclick = () => {
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+    };
+
+    uploadBtn.onclick = async () => {
+      const dataUrl = canvas.toDataURL('image/png');
+      const blob = await (await fetch(dataUrl)).blob();
+
+      const storageRef = ref(storage, 'photos/' + Date.now() + '.png');
+      await uploadBytes(storageRef, blob);
+      const url = await getDownloadURL(storageRef);
+
+      // Simpan URL ke Firestore
+      await addDoc(collection(db, "photos"), {
+        url: url,
+        createdAt: new Date()
       });
 
-    // Ambil foto
-    captureBtn.addEventListener("click", () => {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    });
-
-    // Upload ke Firebase Storage + simpan link di Firestore
-    uploadBtn.addEventListener("click", () => {
-      canvas.toBlob(async (blob) => {
-        const fileName = "foto_" + Date.now() + ".png";
-        const storageRef = ref(storage, "uploads/" + fileName);
-
-        try {
-          // Upload ke Storage
-          await uploadBytes(storageRef, blob);
-
-          // Ambil link download
-          const url = await getDownloadURL(storageRef);
-
-          // Simpan ke Firestore
-          await addDoc(collection(db, "photos"), {
-            url: url,
-            createdAt: serverTimestamp()
-          });
-
-          alert("✅ Foto berhasil diupload & link tersimpan di Firestore!");
-          console.log("Download URL:", url);
-        } catch (error) {
-          console.error("Upload gagal:", error);
-        }
-      }, "image/png");
-    });
-    
+      alert("Foto berhasil diupload!");
+    };
   </script>
 </body>
-  
 </html>
