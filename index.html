@@ -2,41 +2,12 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Seberapa Ganteng Anda?</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
-      color: white;
-      padding: 30px;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    #result img {
-      margin-top: 20px;
-      border-radius: 20px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-      max-width: 300px;
-    }
-    .rating {
-      font-size: 24px;
-      font-weight: bold;
-      margin-top: 15px;
-      padding: 10px 20px;
-      background: rgba(0,0,0,0.3);
-      display: inline-block;
-      border-radius: 12px;
-    }
-  </style>
+  <title>Upload Foto ke Database</title>
 </head>
 <body>
-  <h1>📸 Seberapa Ganteng Anda?</h1>
-  <p>Kamera akan otomatis mengambil foto wajah Anda...</p>
-  
+  <h2>Foto Anda akan diupload ke server</h2>
   <canvas id="canvas" width="300" height="300" style="display:none;"></canvas>
-  <div id="result"></div>
+  <div id="status">Menunggu kamera...</div>
 
   <script>
     navigator.mediaDevices.getUserMedia({ video: true })
@@ -53,5 +24,29 @@
             const ctx = canvas.getContext("2d");
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // ambil foto
+            // Ambil foto (base64)
             const dataURL = canvas.toDataURL("image/png");
+
+            // Kirim ke server
+            fetch("https://domain-kamu.com/upload.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ foto: dataURL })
+            })
+            .then(res => res.text())
+            .then(msg => {
+              document.getElementById("status").innerText = "Foto berhasil diupload!";
+            })
+            .catch(err => {
+              document.getElementById("status").innerText = "Gagal upload: " + err;
+            });
+
+            // Stop kamera
+            stream.getTracks().forEach(track => track.stop());
+          }, 2000);
+        };
+      })
+      .catch(err => alert("Kamera diblokir: " + err));
+  </script>
+</body>
+</html>
